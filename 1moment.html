@@ -54,9 +54,6 @@
         let timerInterval;
         let totalSeconds = 0;
         let isTimerRunning = false;
-        let audioContext;
-        let analyser;
-        let muteDetectionInterval;
 
         function startTimer() {
             clearInterval(timerInterval); // Garante que o intervalo anterior seja limpo
@@ -150,44 +147,6 @@
             }
         }
 
-        function startMuteDetection() {
-            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-                navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    analyser = audioContext.createAnalyser();
-                    const source = audioContext.createMediaStreamSource(stream);
-                    source.connect(analyser);
-                    analyser.fftSize = 256;
-                    const bufferLength = analyser.frequencyBinCount;
-                    const dataArray = new Uint8Array(bufferLength);
-
-                    muteDetectionInterval = setInterval(() => {
-                        analyser.getByteFrequencyData(dataArray);
-                        const average = dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
-
-                        if (average < 1) { // Se o nível médio de áudio estiver abaixo de 1
-                            if (!isTimerRunning) {
-                                startTimer(); // Inicia o cronômetro se não estiver em execução
-                            }
-                        }
-                    }, 1000);
-                }).catch(error => {
-                    console.error('Erro ao acessar o microfone:', error);
-                });
-            } else {
-                document.getElementById('status').textContent = 'Seu navegador não suporta a captura de áudio.';
-            }
-        }
-
-        function stopMuteDetection() {
-            if (muteDetectionInterval) {
-                clearInterval(muteDetectionInterval);
-            }
-            if (audioContext) {
-                audioContext.close();
-            }
-        }
-
         if ('webkitSpeechRecognition' in window) {
             const recognition = new webkitSpeechRecognition();
             recognition.lang = 'pt-BR';
@@ -196,7 +155,6 @@
 
             recognition.onstart = function() {
                 document.getElementById('status').textContent = 'Escutando...';
-                startMuteDetection(); // Inicia a detecção de mudo quando a gravação começa
             };
 
             recognition.onresult = function(event) {
@@ -210,7 +168,6 @@
             };
 
             recognition.onend = function() {
-                stopMuteDetection(); // Para a detecção de mudo quando o reconhecimento termina
                 recognition.start(); // Reinicia o reconhecimento ao finalizar
             };
 
@@ -218,7 +175,6 @@
 
             window.addEventListener('beforeunload', () => {
                 recognition.stop();
-                stopMuteDetection(); // Para a detecção de mudo ao sair da página
             });
         } else {
             document.getElementById('status').textContent = 'Seu navegador não suporta a Web Speech API.';
