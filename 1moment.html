@@ -120,30 +120,15 @@
                 "obrigado por ter esperado", "muito grato por sua paciência"
             ];
 
+            // Verifica se o transcript contém alguma das frases de solicitação ou agradecimento
             if (requestPhrases.some(phrase => lowerTranscript.includes(phrase))) {
                 if (!isTimerRunning) {
                     startTimer();
                 } else {
-                    startTimer(); // Reinicia o cronômetro
+                    resetTimer(); // Reinicia o cronômetro se já estiver rodando
                 }
             } else if (thankPhrases.some(phrase => lowerTranscript.includes(phrase)) && isTimerRunning) {
                 stopTimer();
-            }
-        }
-
-        function resetTimerIfNeeded(transcript) {
-            const lowerTranscript = transcript.toLowerCase();
-            const resetPhrases = [
-                "um momento", "mais um momento", "só um momento", "um instante", 
-                "um pouquinho de tempo", "mais um instante", "um momentinho", 
-                "só mais um momento", "só mais um instante", "só mais um pouco de tempo", 
-                "um momento só", "só mais um tempo", "mais um pouquinho"
-            ];
-            
-            if (resetPhrases.some(phrase => lowerTranscript.includes(phrase))) {
-                if (isTimerRunning) {
-                    startTimer(); // Reinicia o cronômetro imediatamente
-                }
             }
         }
 
@@ -159,8 +144,7 @@
 
             recognition.onresult = function(event) {
                 const transcript = event.results[event.resultIndex][0].transcript.trim();
-                resetTimerIfNeeded(transcript); // Verifica e reinicia o cronômetro se necessário
-                checkForCommand(transcript); // Verifica outros comandos
+                checkForCommand(transcript); // Verifica comandos de voz
             };
 
             recognition.onerror = function(event) {
@@ -168,9 +152,10 @@
             };
 
             recognition.onend = function() {
-                recognition.start(); // Reinicia o reconhecimento ao finalizar
+                recognition.start(); // Reinicia o reconhecimento se ele terminar
             };
 
+            // Inicia o reconhecimento de voz
             recognition.start();
 
             window.addEventListener('beforeunload', () => {
