@@ -18,7 +18,7 @@ Este é um projeto de cronômetro web que utiliza comandos de voz e botões para
     cd nome-do-repositorio
     ```
 
-2. Abra o arquivo `1moment.html` em seu navegador preferido (de preferência, Google Chrome).
+2. Abra o arquivo `index.html` em seu navegador preferido (de preferência, Google Chrome).
 
 3. Certifique-se de que seu microfone esteja ativado para utilizar os comandos de voz.
 
