@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cronômetro com Comando de Voz e Botões</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin-top: 50px;
+            background-color: #003134;
+            color: #FFFFFF;
+        }
+        #status {
+            font-size: 1.5em;
+            margin-top: 20px;
+            color: #00E28B;
+        }
+        #timer {
+            font-size: 2em;
+            margin-top: 20px;
+            color: #007173;
+        }
+        button {
+            font-size: 1.2em;
+            margin: 10px;
+            padding: 10px 20px;
+            background-color: #00E28B;
+            color: #003134;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #007173;
+        }
+    </style>
+</head>
+<body>
+    <h1>Cronômetro com Comando de Voz e Botões</h1>
+    <div id="status">Aguardando comando...</div>
+    <div id="timer">00:00</div>
+
+    <audio id="beepSound" src="beep.mp3" preload="auto"></audio>
+
+    <div>
+        <button onclick="startTimer()">Iniciar Cronômetro</button>
+        <button onclick="resetTimer()">Resetar Cronômetro</button>
+        <button onclick="stopTimer()">Parar Cronômetro</button>
+    </div>
+
+    <script>
+        let timerInterval;
+        let totalSeconds = 0;
+        let isTimerRunning = false;
+        let audioContext;
+        let analyser;
+        let muteDetectionInterval;
+
+        function startTimer() {
+            clearInterval(timerInterval); // Garante que o intervalo anterior seja limpo
+            totalSeconds = 0;
+            isTimerRunning = true;
+            document.getElementById('status').textContent = 'Cronômetro iniciado!';
+            document.title = formatTime(totalSeconds); // Atualiza o título da página
+
+            timerInterval = setInterval(() => {
+                totalSeconds++;
+                document.getElementById('timer').textContent = formatTime(totalSeconds);
+                document.title = formatTime(totalSeconds); // Atualiza o título da página
+
+                if (totalSeconds === 110) { // 1 minuto e 50 segundos
+                    playBeep();
+                }
+            }, 1000);
+        }
+
+        function stopTimer(reset = true) {
+            clearInterval(timerInterval);
+            if (reset) {
+                totalSeconds = 0;
+                document.getElementById('timer').textContent = "00:00";
+                document.title = "Cronômetro com Comando de Voz e Botões"; // Reseta o título da página
+            }
+            isTimerRunning = false;
+            document.getElementById('status').textContent = 'Aguardando comando...';
+        }
+
+        function resetTimer() {
+            if (isTimerRunning) {
+                startTimer(); // Reinicia o cronômetro imediatamente
+            }
+        }
+
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+        }
+
+        function playBeep() {
+            const beepSound = document.getElementById('beepSound');
+            beepSound.currentTime = 0; // Reseta o tempo do áudio para o início
+            beepSound.play().catch(error => console.error("Erro ao tocar o beep:", error));
+        }
+
+        function checkForCommand(transcript) {
+            const lowerTranscript = transcript.toLowerCase();
+            const requestPhrases = [
+                "um momento", "mais um momento", "só um momento", "um instante", 
+                "um pouquinho de tempo", "mais um instante", "um momentinho", 
+                "só mais um momento", "só mais um instante", "só mais um pouco de tempo", 
+                "um momento só", "só mais um tempo", "mais um pouquinho"
+            ];
+            const thankPhrases = [
+                "obrigado por aguardar", "muito obrigado por ter aguardado", 
+                "agradeço pelo tempo aguardado", "valeu por esperar", "obrigado por esperar", 
+                "agradeço por sua paciência", "obrigado pela sua paciência", 
+                "agradeço por aguardar um momento", "muito obrigado por esperar", 
+                "obrigado pelo tempo aguardado", "agradeço pelo tempo aguardado",
+                "muito obrigado por ter esperado", "agradeço por esperar", 
+                "obrigado por ter esperado", "muito grato por sua paciência"
+            ];
+
+            if (requestPhrases.some(phrase => lowerTranscript.includes(phrase))) {
+                if (!isTimerRunning) {
+                    startTimer();
+                } else {
+                    startTimer(); // Reinicia o cronômetro
+                }
+            } else if (thankPhrases.some(phrase => lowerTranscript.includes(phrase)) && isTimerRunning) {
+                stopTimer();
+            }
+        }
+
+        function resetTimerIfNeeded(transcript) {
+            const lowerTranscript = transcript.toLowerCase();
+            const resetPhrases = [
+                "um momento", "mais um momento", "só um momento", "um instante", 
+                "um pouquinho de tempo", "mais um instante", "um momentinho", 
+                "só mais um momento", "só mais um instante", "só mais um pouco de tempo", 
+                "um momento só", "só mais um tempo", "mais um pouquinho"
+            ];
+            
+            if (resetPhrases.some(phrase => lowerTranscript.includes(phrase))) {
+                if (isTimerRunning) {
+                    startTimer(); // Reinicia o cronômetro imediatamente
+                }
+            }
+        }
+
+        function startMuteDetection() {
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    analyser = audioContext.createAnalyser();
+                    const source = audioContext.createMediaStreamSource(stream);
+                    source.connect(analyser);
+                    analyser.fftSize = 256;
+                    const bufferLength = analyser.frequencyBinCount;
+                    const dataArray = new Uint8Array(bufferLength);
+
+                    muteDetectionInterval = setInterval(() => {
+                        analyser.getByteFrequencyData(dataArray);
+                        const average = dataArray.reduce((sum, value) => sum + value, 0) / dataArray.length;
+
+                        if (average < 1) { // Se o nível médio de áudio estiver abaixo de 1
+                            if (!isTimerRunning) {
+                                startTimer(); // Inicia o cronômetro se não estiver em execução
+                            }
+                        }
+                    }, 1000);
+                }).catch(error => {
+                    console.error('Erro ao acessar o microfone:', error);
+                });
+            } else {
+                document.getElementById('status').textContent = 'Seu navegador não suporta a captura de áudio.';
+            }
+        }
+
+        function stopMuteDetection() {
+            if (muteDetectionInterval) {
+                clearInterval(muteDetectionInterval);
+            }
+            if (audioContext) {
+                audioContext.close();
+            }
+        }
+
+        if ('webkitSpeechRecognition' in window) {
+            const recognition = new webkitSpeechRecognition();
+            recognition.lang = 'pt-BR';
+            recognition.continuous = true;
+            recognition.interimResults = false;
+
+            recognition.onstart = function() {
+                document.getElementById('status').textContent = 'Escutando...';
+                startMuteDetection(); // Inicia a detecção de mudo quando a gravação começa
+            };
+
+            recognition.onresult = function(event) {
+                const transcript = event.results[event.resultIndex][0].transcript.trim();
+                resetTimerIfNeeded(transcript); // Verifica e reinicia o cronômetro se necessário
+                checkForCommand(transcript); // Verifica outros comandos
+            };
+
+            recognition.onerror = function(event) {
+                document.getElementById('status').textContent = `Erro: ${event.error}`;
+            };
+
+            recognition.onend = function() {
+                stopMuteDetection(); // Para a detecção de mudo quando o reconhecimento termina
+                recognition.start(); // Reinicia o reconhecimento ao finalizar
+            };
+
+            recognition.start();
+
+            window.addEventListener('beforeunload', () => {
+                recognition.stop();
+                stopMuteDetection(); // Para a detecção de mudo ao sair da página
+            });
+        } else {
+            document.getElementById('status').textContent = 'Seu navegador não suporta a Web Speech API.';
+        }
+    </script>
+</body>
+</html>
