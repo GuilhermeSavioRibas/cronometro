@@ -74,11 +74,3 @@ Certifique-se de que o arquivo de som `beep.mp3` esteja no mesmo diretório que 
     git push origin minha-nova-feature
     ```
 5. Abra um pull request.
-
-## Licença
-
-Este projeto está licenciado sob a licença MIT. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
-
-## Créditos
-
-Desenvolvido por Guilherme Ribas.
