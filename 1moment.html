@@ -3,108 +3,182 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Timer com Comandos de Voz</title>
+    <title>Cronômetro com Comando de Voz e Botões</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-        }
-        .timer {
-            font-size: 48px;
             text-align: center;
+            margin-top: 50px;
+            background-color: #003134;
+            color: #FFFFFF;
+        }
+        #status {
+            font-size: 1.5em;
             margin-top: 20px;
+            color: #00E28B;
+        }
+        #timer {
+            font-size: 2em;
+            margin-top: 20px;
+            color: #007173;
+        }
+        button {
+            font-size: 1.2em;
+            margin: 10px;
+            padding: 10px 20px;
+            background-color: #00E28B;
+            color: #003134;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #007173;
         }
     </style>
 </head>
 <body>
-    <h1>Timer de Atendimento</h1>
-    <div class="timer" id="timer">00:00</div>
+    <h1>Cronômetro com Comando de Voz e Botões</h1>
+    <div id="status">Aguardando comando...</div>
+    <div id="timer">00:00</div>
+
+    <audio id="beepSound" src="beep.mp3" preload="auto"></audio>
+
+    <div>
+        <button onclick="startTimer()">Iniciar Cronômetro</button>
+        <button onclick="resetTimer()">Resetar Cronômetro</button>
+        <button onclick="stopTimer()">Parar Cronômetro</button>
+    </div>
+
     <script>
-        let minutes = 0;
-        let seconds = 0;
-        let timerInterval = null;
+        let timerInterval;
+        let totalSeconds = 0;
         let isTimerRunning = false;
 
-        // Função para tocar o beep quando o cronômetro chega a 01:50
-        function playBeep() {
-            var beep = new Audio('beep.mp3');  // Certifique-se de que o arquivo 'beep.mp3' está no mesmo diretório
-            beep.play().catch(error => console.log('Erro ao tocar o beep:', error));
-        }
-
-        // Função para atualizar o cronômetro na tela
-        function updateTimerDisplay() {
-            const display = document.getElementById('timer');
-            const formattedMinutes = minutes.toString().padStart(2, '0');
-            const formattedSeconds = seconds.toString().padStart(2, '0');
-            display.textContent = `${formattedMinutes}:${formattedSeconds}`;
-        }
-
-        // Função principal do cronômetro
         function startTimer() {
-            if (!isTimerRunning) {
-                isTimerRunning = true;
-                timerInterval = setInterval(() => {
-                    seconds++;
-                    if (seconds === 60) {
-                        seconds = 0;
-                        minutes++;
-                    }
-                    updateTimerDisplay();
-                    checkTime();
-                }, 1000);
-            }
+            clearInterval(timerInterval); // Garante que o intervalo anterior seja limpo
+            totalSeconds = 0;
+            isTimerRunning = true;
+            document.getElementById('status').textContent = 'Cronômetro iniciado!';
+            document.title = formatTime(totalSeconds); // Atualiza o título da página
+
+            timerInterval = setInterval(() => {
+                totalSeconds++;
+                document.getElementById('timer').textContent = formatTime(totalSeconds);
+                document.title = formatTime(totalSeconds); // Atualiza o título da página
+
+                if (totalSeconds === 110) { // 1 minuto e 50 segundos
+                    playBeep();
+                }
+            }, 1000);
         }
 
-        // Função para verificar se chegou a 01:50 e tocar o beep
-        function checkTime() {
-            if (minutes === 1 && seconds === 50) {
-                playBeep();  // Toca o beep ao atingir 01:50
-            }
-        }
-
-        // Função para parar o cronômetro
-        function stopTimer() {
+        function stopTimer(reset = true) {
             clearInterval(timerInterval);
+            if (reset) {
+                totalSeconds = 0;
+                document.getElementById('timer').textContent = "00:00";
+                document.title = "Cronômetro com Comando de Voz e Botões"; // Reseta o título da página
+            }
             isTimerRunning = false;
-            minutes = 0;
-            seconds = 0;
-            updateTimerDisplay();
+            document.getElementById('status').textContent = 'Aguardando comando...';
         }
 
-        // Inicializa a API de reconhecimento de voz
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const recognition = new SpeechRecognition();
-        recognition.lang = 'pt-BR';  // Define o idioma para português
-        recognition.continuous = true;  // Mantém o reconhecimento contínuo
-        recognition.interimResults = false;  // Apenas resultados finais
-
-        // Função de reconhecimento de voz
-        recognition.onresult = function (event) {
-            const transcript = event.results[event.resultIndex][0].transcript.toLowerCase();
-            console.log('Comando recebido:', transcript);
-
-            // Verifica se o comando de voz contém as frases relacionadas
-            if (transcript.includes('um momento') || transcript.includes('mais um momento') || transcript.includes('só um momento')) {
-                startTimer();  // Inicia o cronômetro
-            } else if (transcript.includes('obrigado por aguardar') || transcript.includes('valeu por esperar')) {
-                stopTimer();  // Para o cronômetro
+        function resetTimer() {
+            if (isTimerRunning) {
+                startTimer(); // Reinicia o cronômetro imediatamente
             }
-        };
+        }
 
-        // Função de erro no reconhecimento de voz
-        recognition.onerror = function (event) {
-            console.error('Erro no reconhecimento de voz:', event.error);
-            if (event.error === 'not-allowed') {
-                alert('Permissão para usar o microfone foi negada.');
+        function formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = seconds % 60;
+            return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
+        }
+
+        function playBeep() {
+            const beepSound = document.getElementById('beepSound');
+            beepSound.currentTime = 0; // Reseta o tempo do áudio para o início
+            beepSound.play().catch(error => console.error("Erro ao tocar o beep:", error));
+        }
+
+        function checkForCommand(transcript) {
+            const lowerTranscript = transcript.toLowerCase();
+            const requestPhrases = [
+                "um momento", "mais um momento", "só um momento", "um instante", 
+                "um pouquinho de tempo", "mais um instante", "um momentinho", 
+                "só mais um momento", "só mais um instante", "só mais um pouco de tempo", 
+                "um momento só", "só mais um tempo", "mais um pouquinho"
+            ];
+            const thankPhrases = [
+                "obrigado por aguardar", "muito obrigado por ter aguardado", 
+                "agradeço pelo tempo aguardado", "valeu por esperar", "obrigado por esperar", 
+                "agradeço por sua paciência", "obrigado pela sua paciência", 
+                "agradeço por aguardar um momento", "muito obrigado por esperar", 
+                "obrigado pelo tempo aguardado", "agradeço pelo tempo aguardado",
+                "muito obrigado por ter esperado", "agradeço por esperar", 
+                "obrigado por ter esperado", "muito grato por sua paciência"
+            ];
+
+            if (requestPhrases.some(phrase => lowerTranscript.includes(phrase))) {
+                if (!isTimerRunning) {
+                    startTimer();
+                } else {
+                    startTimer(); // Reinicia o cronômetro
+                }
+            } else if (thankPhrases.some(phrase => lowerTranscript.includes(phrase)) && isTimerRunning) {
+                stopTimer();
             }
-        };
+        }
 
-        // Inicia o reconhecimento de voz automaticamente
-        function startRecognition() {
+        function resetTimerIfNeeded(transcript) {
+            const lowerTranscript = transcript.toLowerCase();
+            const resetPhrases = [
+                "um momento", "mais um momento", "só um momento", "um instante", 
+                "um pouquinho de tempo", "mais um instante", "um momentinho", 
+                "só mais um momento", "só mais um instante", "só mais um pouco de tempo", 
+                "um momento só", "só mais um tempo", "mais um pouquinho"
+            ];
+            
+            if (resetPhrases.some(phrase => lowerTranscript.includes(phrase))) {
+                if (isTimerRunning) {
+                    startTimer(); // Reinicia o cronômetro imediatamente
+                }
+            }
+        }
+
+        if ('webkitSpeechRecognition' in window) {
+            const recognition = new webkitSpeechRecognition();
+            recognition.lang = 'pt-BR';
+            recognition.continuous = true;
+            recognition.interimResults = false;
+
+            recognition.onstart = function() {
+                document.getElementById('status').textContent = 'Escutando...';
+            };
+
+            recognition.onresult = function(event) {
+                const transcript = event.results[event.resultIndex][0].transcript.trim();
+                resetTimerIfNeeded(transcript); // Verifica e reinicia o cronômetro se necessário
+                checkForCommand(transcript); // Verifica outros comandos
+            };
+
+            recognition.onerror = function(event) {
+                document.getElementById('status').textContent = `Erro: ${event.error}`;
+            };
+
+            recognition.onend = function() {
+                recognition.start(); // Reinicia o reconhecimento ao finalizar
+            };
+
             recognition.start();
+
+            window.addEventListener('beforeunload', () => {
+                recognition.stop(); // Para o reconhecimento ao sair da página
+            });
+        } else {
+            document.getElementById('status').textContent = 'Seu navegador não suporta a Web Speech API.';
         }
-
-        startRecognition();  // Chama a função para iniciar o reconhecimento
-
     </script>
 </body>
 </html>
