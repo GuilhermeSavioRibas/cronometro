@@ -53,24 +53,27 @@
     <script>
         let timerInterval;
         let totalSeconds = 0;
+        let startTimestamp = 0;
         let isTimerRunning = false;
 
         function startTimer() {
-            clearInterval(timerInterval); // Garante que o intervalo anterior seja limpo
-            totalSeconds = 0;
+            startTimestamp = Date.now() - totalSeconds * 1000; // Armazena o timestamp corrigido
             isTimerRunning = true;
             document.getElementById('status').textContent = 'Cronômetro iniciado!';
-            document.title = formatTime(totalSeconds); // Atualiza o título da página
+            document.title = formatTime(totalSeconds);
 
-            timerInterval = setInterval(() => {
-                totalSeconds++;
-                document.getElementById('timer').textContent = formatTime(totalSeconds);
-                document.title = formatTime(totalSeconds); // Atualiza o título da página
+            timerInterval = setInterval(updateTimer, 100);
+        }
 
-                if (totalSeconds === 110) { // 1 minuto e 50 segundos
-                    playBeep();
-                }
-            }, 1000);
+        function updateTimer() {
+            const currentTimestamp = Date.now();
+            totalSeconds = Math.floor((currentTimestamp - startTimestamp) / 1000);
+            document.getElementById('timer').textContent = formatTime(totalSeconds);
+            document.title = formatTime(totalSeconds);
+
+            if (totalSeconds === 110) {
+                playBeep();
+            }
         }
 
         function stopTimer(reset = true) {
@@ -78,7 +81,7 @@
             if (reset) {
                 totalSeconds = 0;
                 document.getElementById('timer').textContent = "00:00";
-                document.title = "Cronômetro com Comando de Voz e Botões"; // Reseta o título da página
+                document.title = "Cronômetro com Comando de Voz e Botões";
             }
             isTimerRunning = false;
             document.getElementById('status').textContent = 'Aguardando comando...';
@@ -86,7 +89,9 @@
 
         function resetTimer() {
             if (isTimerRunning) {
-                startTimer(); // Reinicia o cronômetro imediatamente
+                totalSeconds = 0; // Reseta o tempo
+                startTimestamp = Date.now(); // Recalcula o timestamp de início
+                document.getElementById('timer').textContent = formatTime(totalSeconds);
             }
         }
 
@@ -120,7 +125,6 @@
                 "obrigado por ter esperado", "muito grato por sua paciência"
             ];
 
-            // Verifica se o transcript contém alguma das frases de solicitação ou agradecimento
             if (requestPhrases.some(phrase => lowerTranscript.includes(phrase))) {
                 if (!isTimerRunning) {
                     startTimer();
@@ -155,7 +159,6 @@
                 recognition.start(); // Reinicia o reconhecimento se ele terminar
             };
 
-            // Inicia o reconhecimento de voz
             recognition.start();
 
             window.addEventListener('beforeunload', () => {
