@@ -35,12 +35,26 @@
         button:hover {
             background-color: #007173;
         }
+        .alert {
+            font-size: 1.5em;
+            color: red;
+            margin-top: 20px;
+            display: none;
+        }
+        .flashing {
+            animation: flash 1s infinite alternate;
+        }
+        @keyframes flash {
+            from { color: red; }
+            to { color: yellow; }
+        }
     </style>
 </head>
 <body>
     <h1>Cronômetro com Comando de Voz e Botões</h1>
     <div id="status">Aguardando comando...</div>
     <div id="timer">00:00</div>
+    <div id="alert" class="alert">⏰ Atenção! Solicite mais um momento ao cliente!</div>
 
     <audio id="beepSound" src="beep.mp3" preload="auto"></audio>
 
@@ -55,12 +69,14 @@
         let totalSeconds = 0;
         let startTimestamp = 0;
         let isTimerRunning = false;
+        let alertTriggered = false;
 
         function startTimer() {
             startTimestamp = Date.now() - totalSeconds * 1000; // Armazena o timestamp corrigido
             isTimerRunning = true;
             document.getElementById('status').textContent = 'Cronômetro iniciado!';
-            document.title = formatTime(totalSeconds);
+            document.getElementById('timer').classList.remove('flashing'); // Remove a classe de alerta se presente
+            document.getElementById('alert').style.display = 'none'; // Esconde o alerta
 
             timerInterval = setInterval(updateTimer, 100);
         }
@@ -69,10 +85,11 @@
             const currentTimestamp = Date.now();
             totalSeconds = Math.floor((currentTimestamp - startTimestamp) / 1000);
             document.getElementById('timer').textContent = formatTime(totalSeconds);
-            document.title = formatTime(totalSeconds);
 
-            if (totalSeconds === 110) {
-                playBeep();
+            if (totalSeconds >= 110) {
+                triggerAlert();
+            } else {
+                clearAlert();
             }
         }
 
@@ -84,14 +101,20 @@
                 document.title = "Cronômetro com Comando de Voz e Botões";
             }
             isTimerRunning = false;
+            alertTriggered = false;
             document.getElementById('status').textContent = 'Aguardando comando...';
+            document.getElementById('timer').classList.remove('flashing');
+            document.getElementById('alert').style.display = 'none'; // Esconde o alerta
         }
 
         function resetTimer() {
             if (isTimerRunning) {
-                totalSeconds = 0; // Reseta o tempo
-                startTimestamp = Date.now(); // Recalcula o timestamp de início
+                totalSeconds = 0;
+                startTimestamp = Date.now();
                 document.getElementById('timer').textContent = formatTime(totalSeconds);
+                document.getElementById('timer').classList.remove('flashing');
+                document.getElementById('alert').style.display = 'none'; // Esconde o alerta
+                alertTriggered = false;
             }
         }
 
@@ -103,8 +126,28 @@
 
         function playBeep() {
             const beepSound = document.getElementById('beepSound');
-            beepSound.currentTime = 0; // Reseta o tempo do áudio para o início
+            beepSound.currentTime = 0;
             beepSound.play().catch(error => console.error("Erro ao tocar o beep:", error));
+        }
+
+        function triggerAlert() {
+            if (!alertTriggered) {
+                playBeep();
+                alertTriggered = true;
+            }
+            document.getElementById('timer').classList.add('flashing');
+            document.getElementById('alert').style.display = 'block';
+            document.title = "⏰ " + formatTime(totalSeconds) + " - Solicite mais tempo!";
+        }
+
+        function clearAlert() {
+            if (totalSeconds < 110) {
+                document.getElementById('timer').classList.remove('flashing');
+                document.getElementById('alert').style.display = 'none';
+                document.title = formatTime(totalSeconds);
+            } else {
+                document.title = "⏰ " + formatTime(totalSeconds) + " - Solicite mais tempo!";
+            }
         }
 
         function checkForCommand(transcript) {
@@ -129,7 +172,7 @@
                 if (!isTimerRunning) {
                     startTimer();
                 } else {
-                    resetTimer(); // Reinicia o cronômetro se já estiver rodando
+                    resetTimer();
                 }
             } else if (thankPhrases.some(phrase => lowerTranscript.includes(phrase)) && isTimerRunning) {
                 stopTimer();
@@ -148,7 +191,7 @@
 
             recognition.onresult = function(event) {
                 const transcript = event.results[event.resultIndex][0].transcript.trim();
-                checkForCommand(transcript); // Verifica comandos de voz
+                checkForCommand(transcript);
             };
 
             recognition.onerror = function(event) {
@@ -156,13 +199,13 @@
             };
 
             recognition.onend = function() {
-                recognition.start(); // Reinicia o reconhecimento se ele terminar
+                recognition.start();
             };
 
             recognition.start();
 
             window.addEventListener('beforeunload', () => {
-                recognition.stop(); // Para o reconhecimento ao sair da página
+                recognition.stop();
             });
         } else {
             document.getElementById('status').textContent = 'Seu navegador não suporta a Web Speech API.';
